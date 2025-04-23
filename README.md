@@ -23,6 +23,8 @@ to build the project.
 
 ```
 cargo install --locked cargo-leptos
+      
+cargo install worker-build
 ```
 
 # Run Locally

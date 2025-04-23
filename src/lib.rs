@@ -1,9 +1,6 @@
 //! Setup our Cloudflare worker (`feature == "ssr"`) and our leptos hydration function (`feature ==
 //! "hydrate"`)
 
-#[cfg(feature = "ssr")]
-use worker::*;
-
 use leptos::*;
 
 mod api;
@@ -13,7 +10,7 @@ mod components;
 use crate::app::App;
 
 #[cfg(feature = "ssr")]
-async fn router(env: Env) -> axum::Router {
+async fn router(env: worker::Env) -> axum::Router {
     use std::sync::Arc;
 
     use axum::{Extension, routing::post};
@@ -36,25 +33,27 @@ async fn router(env: Env) -> axum::Router {
         hash_file: "hash.txt".into(),
         hash_files: false,
     };
-    let routes = generate_route_list(|| view! { <App /> });
+    // let routes = generate_route_list(|| view! { <App /> });
+
+    let routes = generate_route_list(App);
 
     register_server_functions();
 
     // build our application with a route
     axum::Router::new()
         .route("/api/*fn_name", post(leptos_axum::handle_server_fns))
-        .leptos_routes(&leptos_options, routes, || view! { <App/> })
+        .leptos_routes(&leptos_options, routes, || view! { <App /> })
         .with_state(leptos_options)
         .layer(Extension(Arc::new(env))) // <- Allow leptos server functions to access Worker stuff
 }
 
 #[cfg(feature = "ssr")]
-#[event(fetch)]
+#[worker::event(fetch)]
 async fn fetch(
-    req: HttpRequest,
-    env: Env,
-    _ctx: Context,
-) -> Result<axum::http::Response<axum::body::Body>> {
+    req: worker::HttpRequest,
+    env: worker::Env,
+    _ctx: worker::Context,
+) -> worker::Result<axum::http::Response<axum::body::Body>> {
     use tower_service::Service;
 
     console_error_panic_hook::set_once();
@@ -68,5 +67,5 @@ pub fn hydrate() {
     _ = console_log::init_with_level(log::Level::Debug);
     console_error_panic_hook::set_once();
 
-    leptos::mount_to_body(|| view! { <App/> });
+    leptos::mount_to_body(|| view! { <App /> });
 }
